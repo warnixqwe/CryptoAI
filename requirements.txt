@@ -1,0 +1,67 @@
+# requirements.txt
+# ===================================================================
+# CryptoPulse AI Ultimate - Python Dependencies
+# Version: 3.2.0
+# ===================================================================
+
+# Core bot framework
+aiogram==3.4.1
+aiogram-fsm-storage==0.2.0
+
+# HTTP & async networking
+aiohttp==3.9.1
+aiohttp-socks==0.8.4
+
+# Web server for webhooks
+aiohttp-jinja2==1.5.1
+
+# Scheduler for background tasks
+APScheduler==3.10.4
+
+# OpenAI integration
+openai==1.6.1
+
+# Cryptocurrency exchange data
+ccxt==4.2.30
+
+# RSS feed parsing
+feedparser==6.0.10
+
+# HTML parsing for news
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Database (SQLite is built-in, but we use no extra driver)
+# Redis optional (for advanced caching)
+redis==5.0.1
+
+# Environment variables
+python-dotenv==1.0.0
+
+# JSON & data utilities
+orjson==3.9.10
+
+# Sentry error tracking (optional)
+sentry-sdk==1.39.1
+
+# Utilities for formatting, colors, etc.
+colorama==0.4.6
+
+# Type hints (development)
+typing-extensions==4.9.0
+
+# Testing & debugging (optional)
+pytest==7.4.4
+pytest-asyncio==0.23.3
+
+# WebSocket client for real-time data (optional)
+websockets==12.0
+
+# YFinance as fallback for market data (optional)
+yfinance==0.2.33
+
+# Additional crypto utilities
+cryptography==41.0.7
+
+# For image processing (if needed)
+Pillow==10.1.0
