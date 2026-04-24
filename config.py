@@ -1,11 +1,16 @@
+# config.py
+# ===================================================================
+# CryptoPulse AI Ultimate - Configuration Module
+# Version: 3.2.1 (исправлено для Python 3.13)
+# ===================================================================
+
 import os
 import sys
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 # ===================================================================
@@ -34,7 +39,7 @@ class Config:
     OPENAI_TIMEOUT: int = int(os.getenv("OPENAI_TIMEOUT", "30"))
     
     # -----------------------------------------------------------------
-    # Crypto Payment Settings (CryptoBot, Binance Pay, etc.)
+    # Crypto Payment Settings
     # -----------------------------------------------------------------
     CRYPTOBOT_TOKEN: str = os.getenv("CRYPTOBOT_TOKEN", "")
     CRYPTOBOT_API_URL: str = "https://pay.crypt.bot/api"
@@ -43,12 +48,12 @@ class Config:
     BINANCE_PAY_SECRET_KEY: str = os.getenv("BINANCE_PAY_SECRET_KEY", "")
     
     # -----------------------------------------------------------------
-    # Database Settings (SQLite + optional Redis)
+    # Database Settings
     # -----------------------------------------------------------------
     DB_PATH: str = os.getenv("DB_PATH", "crypto_pulse.db")
     DB_BACKUP_INTERVAL_HOURS: int = int(os.getenv("DB_BACKUP_INTERVAL_HOURS", "24"))
     REDIS_URL: Optional[str] = os.getenv("REDIS_URL", None)
-    USE_REDIS: bool = REDIS_URL is not None and REDIS_URL != ""
+    # USE_REDIS будет вычислен в __post_init__
     
     # -----------------------------------------------------------------
     # Market Data Settings
@@ -73,8 +78,8 @@ class Config:
     ])
     NEWS_CACHE_MINUTES: int = int(os.getenv("NEWS_CACHE_MINUTES", "15"))
     MAX_NEWS_PER_SOURCE: int = int(os.getenv("MAX_NEWS_PER_SOURCE", "20"))
-    PROXY_LIST: List[str] = field(default_factory=lambda: os.getenv("PROXY_LIST", "").split(",") if os.getenv("PROXY_LIST") else [])
-    USE_PROXY_FOR_NEWS: bool = len(PROXY_LIST) > 0 and PROXY_LIST[0] != ""
+    PROXY_LIST: List[str] = field(default_factory=lambda: [p.strip() for p in os.getenv("PROXY_LIST", "").split(",") if p.strip()])
+    # USE_PROXY_FOR_NEWS будет вычислен в __post_init__
     
     # -----------------------------------------------------------------
     # Signal Generation Settings
@@ -95,10 +100,10 @@ class Config:
     SUBSCRIPTION_CURRENCIES: List[str] = field(default_factory=lambda: ["USDT", "BTC", "ETH", "BNB"])
     
     # -----------------------------------------------------------------
-    # Referral System (Multi-Level)
+    # Referral System
     # -----------------------------------------------------------------
     MAX_REFERRAL_LEVELS: int = int(os.getenv("MAX_REFERRAL_LEVELS", "5"))
-    REFERRAL_REWARD_PERCENT: List[float] = field(default_factory=lambda: [50.0, 15.0, 7.0, 3.0, 1.0])  # level 1 to 5
+    REFERRAL_REWARD_PERCENT: List[float] = field(default_factory=lambda: [50.0, 15.0, 7.0, 3.0, 1.0])
     REFERRAL_MIN_WITHDRAW: float = float(os.getenv("REFERRAL_MIN_WITHDRAW", "10.0"))
     REFERRAL_BONUS_ON_SUBSCRIBE: float = float(os.getenv("REFERRAL_BONUS_ON_SUBSCRIBE", "5.0"))
     
@@ -112,7 +117,7 @@ class Config:
     BAN_DURATION_HOURS: int = int(os.getenv("BAN_DURATION_HOURS", "24"))
     
     # -----------------------------------------------------------------
-    # Localization / Languages
+    # Localization
     # -----------------------------------------------------------------
     DEFAULT_LANGUAGE: str = os.getenv("DEFAULT_LANGUAGE", "en")
     SUPPORTED_LANGUAGES: List[str] = field(default_factory=lambda: ["en", "ru", "es", "de", "fr", "zh", "tr", "ar"])
@@ -124,7 +129,7 @@ class Config:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE: str = os.getenv("LOG_FILE", "logs/bot.log")
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    LOG_MAX_BYTES: int = int(os.getenv("LOG_MAX_BYTES", "10485760"))  # 10MB
+    LOG_MAX_BYTES: int = int(os.getenv("LOG_MAX_BYTES", "10485760"))
     LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", "5"))
     SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN", None)
     
@@ -136,7 +141,7 @@ class Config:
     MAX_CONCURRENT_REQUESTS: int = int(os.getenv("MAX_CONCURRENT_REQUESTS", "10"))
     
     # -----------------------------------------------------------------
-    # Webhook vs Polling (for Telegram)
+    # Webhook vs Polling
     # -----------------------------------------------------------------
     USE_WEBHOOK: bool = os.getenv("USE_WEBHOOK", "false").lower() == "true"
     WEBHOOK_URL: Optional[str] = os.getenv("WEBHOOK_URL", None)
@@ -159,14 +164,25 @@ class Config:
     TWITTER_BEARER_TOKEN: str = os.getenv("TWITTER_BEARER_TOKEN", "")
     
     # -----------------------------------------------------------------
-    # Internal validation
+    # Вычисляемые поля (заполняются в __post_init__)
+    # -----------------------------------------------------------------
+    USE_PROXY_FOR_NEWS: bool = False
+    USE_REDIS: bool = False
+    
+    # -----------------------------------------------------------------
+    # Внутренняя валидация и инициализация
     # -----------------------------------------------------------------
     def __post_init__(self):
-        self._validate()
+        # Вычисляем зависимые поля после того, как все переменные окружения загружены
+        self.USE_PROXY_FOR_NEWS = len(self.PROXY_LIST) > 0 and self.PROXY_LIST[0] != ""
+        self.USE_REDIS = self.REDIS_URL is not None and self.REDIS_URL != ""
+        
+        # Загружаем ADMIN_IDS из переменной окружения
         self._load_admin_ids()
+        # Валидация
+        self._validate()
     
     def _validate(self):
-        """Validate critical configuration parameters"""
         if not self.API_TOKEN:
             logging.critical("API_TOKEN not set. Bot will not start.")
             sys.exit(1)
@@ -176,17 +192,14 @@ class Config:
             raise ValueError("SUBSCRIPTION_PRICE_USD cannot be negative")
         if self.MAX_REFERRAL_LEVELS < 1 or self.MAX_REFERRAL_LEVELS > 10:
             raise ValueError("MAX_REFERRAL_LEVELS must be between 1 and 10")
-        if len(self.REFERRAL_REWARD_PERCENT) != self.MAX_REFERRAL_LEVELS:
-            logging.warning(f"REFERRAL_REWARD_PERCENT length ({len(self.REFERRAL_REWARD_PERCENT)}) does not match MAX_REFERRAL_LEVELS ({self.MAX_REFERRAL_LEVELS}). Adjusting.")
-            # Adjust list to match levels
-            while len(self.REFERRAL_REWARD_PERCENT) < self.MAX_REFERRAL_LEVELS:
-                self.REFERRAL_REWARD_PERCENT.append(0.0)
-            self.REFERRAL_REWARD_PERCENT = self.REFERRAL_REWARD_PERCENT[:self.MAX_REFERRAL_LEVELS]
+        # Привести REFERRAL_REWARD_PERCENT к нужной длине
+        while len(self.REFERRAL_REWARD_PERCENT) < self.MAX_REFERRAL_LEVELS:
+            self.REFERRAL_REWARD_PERCENT.append(0.0)
+        self.REFERRAL_REWARD_PERCENT = self.REFERRAL_REWARD_PERCENT[:self.MAX_REFERRAL_LEVELS]
         if self.USE_WEBHOOK and not self.WEBHOOK_URL:
             raise ValueError("WEBHOOK_URL must be set when USE_WEBHOOK is True")
     
     def _load_admin_ids(self):
-        """Parse ADMIN_IDS from environment variable (comma-separated list)"""
         admin_ids_env = os.getenv("ADMIN_IDS", "")
         if admin_ids_env:
             try:
@@ -198,24 +211,20 @@ class Config:
             logging.warning("No ADMIN_IDS configured. Admin commands will be disabled.")
     
     def is_admin(self, user_id: int) -> bool:
-        """Check if user_id is in admin list"""
         return user_id in self.ADMIN_IDS
     
     def get_referral_reward_for_level(self, level: int) -> float:
-        """Get reward percentage for given referral level (1-indexed)"""
         if 1 <= level <= self.MAX_REFERRAL_LEVELS:
             return self.REFERRAL_REWARD_PERCENT[level - 1]
         return 0.0
     
     def get_symbols_as_list(self) -> List[str]:
-        """Return list of trading pairs (can be overridden via env)"""
         symbols_env = os.getenv("SUPPORTED_SYMBOLS", "")
         if symbols_env:
             return [s.strip() for s in symbols_env.split(",") if s.strip()]
         return self.SUPPORTED_SYMBOLS
     
     def get_config_dict(self) -> Dict[str, Any]:
-        """Export config as dictionary (for admin info command)"""
         return {
             "bot_username": self.BOT_USERNAME,
             "admins": self.ADMIN_IDS,
@@ -236,18 +245,12 @@ class Config:
 _config_instance: Optional[Config] = None
 
 def get_config() -> Config:
-    """Return global configuration instance (singleton)"""
     global _config_instance
     if _config_instance is None:
         _config_instance = Config()
     return _config_instance
 
-# ===================================================================
-# Quick validation and startup check
-# ===================================================================
-
-def validate_config_or_exit():
-    """Call this at bot startup to ensure config is correct"""
+def validate_config_or_exit() -> Config:
     cfg = get_config()
     if not cfg.API_TOKEN:
         print("[FATAL] API_TOKEN not set in .env or environment.")
@@ -261,20 +264,12 @@ def validate_config_or_exit():
         print("[INFO] Redis disabled. Using SQLite only.")
     return cfg
 
-# ===================================================================
-# Environment helper
-# ===================================================================
-
-def reload_config():
-    """Reload config from environment (useful for hot-reload admin command)"""
+def reload_config() -> Config:
     global _config_instance
     load_dotenv(override=True)
     _config_instance = Config()
     return _config_instance
 
-# ===================================================================
-# If run directly, print config summary
-# ===================================================================
 if __name__ == "__main__":
     cfg = validate_config_or_exit()
     print("\n--- CONFIGURATION SUMMARY ---")
